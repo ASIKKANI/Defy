@@ -1,0 +1,13 @@
+# Hardhat
+node_modules
+artifacts
+cache
+coverage
+coverage.json
+typechain
+typechain-types
+.env
+
+# General
+.DS_Store
+Thumbs.db
