@@ -38,8 +38,18 @@ export const useAgent = (provider, signer) => {
         setError(null);
         setLastDecision(null);
 
+        let logId;
         try {
             console.log("Agent: ProcessPrompt started for", userPrompt);
+
+            logId = addLog({
+                agent: 'System',
+                action: 'THINKING',
+                type: 'PUBLIC',
+                status: 'Processing',
+                consoleLogs: [`Initiating cognitive layer for: "${userPrompt}"`]
+            });
+
             // 0. Inject Context
             const userAddress = signer ? await signer.getAddress() : "unknown";
             const contextPrompt = `
@@ -47,27 +57,28 @@ Context:
 - User's Wallet Address: ${userAddress}
 - Current Network: Shardeum EVM
 `;
+            updateLog(logId, { consoleLogs: [`Context: Wallet=${userAddress}, Network=Shardeum EVM`] });
 
             // 1. Get AI Reasoning
-            console.log("Agent: Requesting Ollama...");
+            updateLog(logId, { consoleLogs: [`Requesting LLM inference from Ollama (llama3)...`] });
             const rawResponse = await generateResponse(contextPrompt + "\n" + userPrompt, SYSTEM_PROMPT);
-            console.log("Agent: Ollama raw response received:", rawResponse);
 
             let decision;
             try {
-                // Try to find JSON block in the response using regex
                 const jsonMatch = rawResponse.match(/\{[\s\S]*\}/);
                 const jsonStr = jsonMatch ? jsonMatch[0] : rawResponse;
-
                 decision = JSON.parse(jsonStr);
-                console.log("Agent: Parsed decision:", decision);
+                updateLog(logId, {
+                    status: 'Success',
+                    consoleLogs: [`Reasoning: ${decision.thought}`, `Plan: Execute ${decision.tool || 'None'}`]
+                });
             } catch (e) {
-                console.warn("AI didn't return valid JSON. Fallback parsing.");
                 decision = {
                     thought: "Raw reasoning captured",
                     tool: null,
                     explanation: rawResponse
                 };
+                updateLog(logId, { status: 'Success', consoleLogs: [`Fallback: Raw response parsed.`] });
             }
 
             setLastDecision(decision);
@@ -75,6 +86,7 @@ Context:
 
         } catch (err) {
             console.error("Agent Error:", err);
+            if (logId) updateLog(logId, { status: 'Reverted', consoleLogs: [`Error: ${err.message}`] });
             setError(err.message);
             return { error: err.message };
         } finally {
@@ -90,7 +102,8 @@ Context:
             action: toolId.replace(/_/g, ' ').toUpperCase(),
             amount: params?.amount || params?.value || 'N/A',
             type: toolId.includes('confidential') ? 'CONFIDENTIAL' : 'PUBLIC',
-            status: 'Processing'
+            status: 'Processing',
+            consoleLogs: [`Executing tool: ${toolId}`, `Params: ${JSON.stringify(params)}`]
         };
 
         let logId;
@@ -348,7 +361,10 @@ Try searching for:
                     break;
             }
 
-            updateLog(logId, { status: 'Success' });
+            updateLog(logId, {
+                status: 'Success',
+                consoleLogs: [`Execution Complete.`, `Output: ${typeof result === 'string' ? result.slice(0, 100) : 'Object returned'}...`]
+            });
             return result;
 
         } catch (error) {

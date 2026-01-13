@@ -27,6 +27,17 @@ const EventCard = ({ event }) => (
                 `Settled on Shardeum ledger. Status: ${event.status}`}
         </p>
 
+        {event.consoleLogs && event.consoleLogs.length > 0 && (
+            <div className="mb-4 p-2 rounded bg-black/40 border border-white/5 font-mono text-[8px] space-y-1 max-h-24 overflow-y-auto custom-scrollbar">
+                {event.consoleLogs.map((log, i) => (
+                    <div key={i} className="flex gap-2">
+                        <span className="text-primary/40 leading-tight">[{i}]</span>
+                        <span className="text-white/40 leading-tight break-all">{log}</span>
+                    </div>
+                ))}
+            </div>
+        )}
+
         <div className="flex items-center justify-between">
             {event.type === 'CONFIDENTIAL' ? (
                 <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-purple-500/10 border border-purple-500/20 text-purple-400">
