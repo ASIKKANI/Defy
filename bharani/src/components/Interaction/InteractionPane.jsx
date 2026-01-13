@@ -14,8 +14,11 @@ import {
     CheckCircle2,
     Lock,
     Unlock,
-    ExternalLink
+    ExternalLink,
+    Mic,
+    MicOff
 } from 'lucide-react';
+import { useVoice } from '../../hooks/useVoice';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const InteractionPane = ({ agent, onBack, useAgent, provider, signer }) => {
@@ -26,6 +29,13 @@ const InteractionPane = ({ agent, onBack, useAgent, provider, signer }) => {
     const [currentDecision, setCurrentDecision] = useState(null);
 
     const { processPrompt, executeTool, isThinking } = useAgent(provider, signer);
+    const { isListening, transcript, startListening, stopListening, speak, isSupported } = useVoice();
+
+    useEffect(() => {
+        if (transcript) {
+            setPrompt(transcript);
+        }
+    }, [transcript]);
 
     const handleRun = async () => {
         if (!prompt.trim() || isThinking) return;
@@ -37,8 +47,10 @@ const InteractionPane = ({ agent, onBack, useAgent, provider, signer }) => {
 
         if (prompt.toLowerCase().includes('consensus') || prompt.toLowerCase().includes('strategy')) {
             setStep('consensus');
+            speak("I've generated a multi-model consensus for this strategy. Please select a path.");
         } else {
             setStep('plan');
+            speak(response.explanation || "I've drafted an execution plan. Please review the cognitive steps.");
         }
     };
 
@@ -48,6 +60,7 @@ const InteractionPane = ({ agent, onBack, useAgent, provider, signer }) => {
             const result = await executeTool(currentDecision.tool, currentDecision.params, provider, signer, simulationMode, agent.name);
             setMessages(prev => [...prev, { role: 'assistant', text: result }]);
             setStep('success');
+            speak("Execution complete. The transaction has been settled on the Shardeum ledger.");
         } catch (err) {
             console.error(err);
             setStep('plan'); // Fallback to plan on error
@@ -102,75 +115,86 @@ const InteractionPane = ({ agent, onBack, useAgent, provider, signer }) => {
                                     <div className="absolute top-6 left-6 text-primary/40 group-focus-within:text-primary transition-colors">
                                         <Terminal size={24} />
                                     </div>
+                                    <div className="absolute top-6 right-6 flex flex-col gap-2 z-20">
+                                        {isSupported && (
+                                            <button
+                                                onClick={isListening ? stopListening : startListening}
+                                                className={`p-3 rounded-2xl border transition-all ${isListening ? 'mic-active' : 'bg-white/5 border-white/10 text-white/40 hover:text-primary hover:border-primary/40'}`}
+                                                title={isListening ? 'Stop Listening' : 'Voice Command'}
+                                            >
+                                                {isListening ? <MicOff size={20} /> : <Mic size={20} />}
+                                            </button>
+                                        )}
+                                    </div>
                                     <textarea
-                                        className="w-full h-48 bg-white/5 border border-white/10 rounded-[32px] p-8 pl-16 text-xl text-white outline-none focus:border-primary/40 focus:shadow-[0_0_30px_rgba(0,255,65,0.05)] transition-all placeholder:text-white/10"
-                                        placeholder="e.g. Maximize my yield across Shardeum pools with low risk limit..."
+                                        className="w-full h-48 bg-white/5 border border-white/10 rounded-[32px] p-8 pl-16 pr-16 text-xl text-white outline-none focus:border-primary/40 focus:shadow-[0_0_30px_rgba(0,255,65,0.05)] transition-all placeholder:text-white/10"
+                                        placeholder={isListening ? "Listening for command..." : "e.g. Maximize my yield across Shardeum pools with low risk limit..."}
                                         value={prompt}
                                         onChange={(e) => setPrompt(e.target.value)}
                                     />
                                 </div>
+                            </div>
 
-                                <div className="flex flex-wrap gap-3">
-                                    {['Maximize Yield', 'Balance Portfolio', 'Private Swap', 'Gas Audit'].map((tag) => (
-                                        <button
-                                            key={tag}
-                                            onClick={() => setPrompt(`Protocol: ${tag}. Action: Enforce strategy.`)}
-                                            className="px-4 py-2 rounded-full border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-primary hover:border-primary/40 transition-all"
-                                        >
-                                            {tag}
-                                        </button>
-                                    ))}
-                                </div>
-
-                                <div className="p-8 rounded-[32px] border border-green-900/10 bg-green-900/5 grid grid-cols-2 gap-8">
-                                    <div className="space-y-4">
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white">Execution Mode</span>
-                                            <span className={simulationMode ? 'text-yellow-500 text-[9px] font-bold' : 'text-primary text-[9px] font-bold'}>
-                                                {simulationMode ? 'SIMULATE' : 'LIVE'}
-                                            </span>
-                                        </div>
-                                        <button
-                                            onClick={() => setSimulationMode(!simulationMode)}
-                                            className="w-full flex items-center justify-between p-3 rounded-xl bg-black/40 border border-white/5 group"
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                {simulationMode ? <Activity size={16} className="text-yellow-500" /> : <ShieldCheck size={16} className="text-primary" />}
-                                                <span className="text-[10px] font-bold text-white/60">Toggle Mode</span>
-                                            </div>
-                                            <div className={`w-8 h-4 rounded-full p-1 transition-colors ${simulationMode ? 'bg-yellow-500/20' : 'bg-primary/20'}`}>
-                                                <div className={`w-2 h-2 rounded-full transition-transform ${simulationMode ? 'translate-x-4 bg-yellow-500' : 'bg-primary'}`} />
-                                            </div>
-                                        </button>
-                                    </div>
-
-                                    <div className="space-y-4">
-                                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white">Confidential Params</span>
-                                        <div className="relative">
-                                            <input
-                                                type="password"
-                                                placeholder="Risk Tolerance (Masked)"
-                                                className="w-full bg-black/40 border border-white/5 p-3 pr-10 rounded-xl text-xs text-white outline-none focus:border-primary/40"
-                                            />
-                                            <EyeOff size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/20" />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-6">
-                                    <button className="py-5 rounded-2xl bg-white/5 border border-white/10 text-[11px] font-black tracking-[0.3em] uppercase text-white/40 hover:text-white transition-all flex items-center justify-center gap-3 group">
-                                        <BrainCircuit size={18} className="group-hover:rotate-12 transition-transform" />
-                                        Consensus
-                                    </button>
+                            <div className="flex flex-wrap gap-3">
+                                {['Maximize Yield', 'Balance Portfolio', 'Private Swap', 'Gas Audit'].map((tag) => (
                                     <button
-                                        onClick={handleRun}
-                                        disabled={isThinking}
-                                        className="py-5 rounded-2xl bg-primary text-black text-[11px] font-black tracking-[0.3em] uppercase hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 shadow-glow"
+                                        key={tag}
+                                        onClick={() => setPrompt(`Protocol: ${tag}. Action: Enforce strategy.`)}
+                                        className="px-4 py-2 rounded-full border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-primary hover:border-primary/40 transition-all"
                                     >
-                                        {isThinking ? <Loader2 size={18} className="animate-spin" /> : <Zap size={18} className="fill-current" />}
-                                        Run Agent
+                                        {tag}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div className="p-8 rounded-[32px] border border-green-900/10 bg-green-900/5 grid grid-cols-2 gap-8">
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white">Execution Mode</span>
+                                        <span className={simulationMode ? 'text-yellow-500 text-[9px] font-bold' : 'text-primary text-[9px] font-bold'}>
+                                            {simulationMode ? 'SIMULATE' : 'LIVE'}
+                                        </span>
+                                    </div>
+                                    <button
+                                        onClick={() => setSimulationMode(!simulationMode)}
+                                        className="w-full flex items-center justify-between p-3 rounded-xl bg-black/40 border border-white/5 group"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            {simulationMode ? <Activity size={16} className="text-yellow-500" /> : <ShieldCheck size={16} className="text-primary" />}
+                                            <span className="text-[10px] font-bold text-white/60">Toggle Mode</span>
+                                        </div>
+                                        <div className={`w-8 h-4 rounded-full p-1 transition-colors ${simulationMode ? 'bg-yellow-500/20' : 'bg-primary/20'}`}>
+                                            <div className={`w-2 h-2 rounded-full transition-transform ${simulationMode ? 'translate-x-4 bg-yellow-500' : 'bg-primary'}`} />
+                                        </div>
                                     </button>
                                 </div>
+
+                                <div className="space-y-4">
+                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white">Confidential Params</span>
+                                    <div className="relative">
+                                        <input
+                                            type="password"
+                                            placeholder="Risk Tolerance (Masked)"
+                                            className="w-full bg-black/40 border border-white/5 p-3 pr-10 rounded-xl text-xs text-white outline-none focus:border-primary/40"
+                                        />
+                                        <EyeOff size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/20" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-6">
+                                <button className="py-5 rounded-2xl bg-white/5 border border-white/10 text-[11px] font-black tracking-[0.3em] uppercase text-white/40 hover:text-white transition-all flex items-center justify-center gap-3 group">
+                                    <BrainCircuit size={18} className="group-hover:rotate-12 transition-transform" />
+                                    Consensus
+                                </button>
+                                <button
+                                    onClick={handleRun}
+                                    disabled={isThinking}
+                                    className="py-5 rounded-2xl bg-primary text-black text-[11px] font-black tracking-[0.3em] uppercase hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 shadow-glow"
+                                >
+                                    {isThinking ? <Loader2 size={18} className="animate-spin" /> : <Zap size={18} className="fill-current" />}
+                                    Run Agent
+                                </button>
                             </div>
                         </motion.div>
                     )}
@@ -383,7 +407,7 @@ const InteractionPane = ({ agent, onBack, useAgent, provider, signer }) => {
                     <div className="text-[10px] font-black text-white italic">SESSION: {Math.random().toString(36).substring(7).toUpperCase()}</div>
                 </div>
             </footer>
-        </div>
+        </div >
     );
 };
 

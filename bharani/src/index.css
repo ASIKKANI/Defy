@@ -195,3 +195,24 @@ body {
     border: 1px solid rgba(0, 255, 65, 0.2);
     box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
 }
+
+@keyframes mic-pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(0, 255, 65, 0.4);
+    }
+
+    70% {
+        box-shadow: 0 0 0 10px rgba(0, 255, 65, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(0, 255, 65, 0);
+    }
+}
+
+.mic-active {
+    animation: mic-pulse 1.5s infinite;
+    background: rgba(0, 255, 65, 0.1) !important;
+    border-color: var(--primary) !important;
+    color: var(--primary) !important;
+}
