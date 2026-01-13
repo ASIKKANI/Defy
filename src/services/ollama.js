@@ -1,4 +1,5 @@
-const OLLAMA_HOST = '/ollama';
+// Use ngrok URL in production, local proxy in development
+const OLLAMA_HOST = import.meta.env.VITE_OLLAMA_URL || '/ollama';
 
 export const generateResponse = async (prompt, systemPrompt) => {
     const controller = new AbortController();
