@@ -38,6 +38,12 @@
 
 <img src="./images/governance.png" width="800"/>
 
+<img src="./images/request.png" width="800"/>
+
+<img src="./images/response.png" width="800"/>
+
+<img src="./images/premium.png" width="800"/>
+
 <img src="./images/inco1.png" width="800"/>
 
 <img src="./images/inco2.png" width="800"/>
