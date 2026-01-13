@@ -107,6 +107,7 @@ Every **Buy / Sell / Hold** decision includes:
 * Reasoning summary
 * Alternatives considered
 * Risks acknowledged
+* Live rate fetching from coinbase
 
 Optional **text-to-speech narration** improves accessibility and demo clarity.
 
