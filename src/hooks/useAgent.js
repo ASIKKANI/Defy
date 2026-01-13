@@ -9,6 +9,12 @@ You are AgentChain, an advanced AI trading assistant.
 Your goal is to help the user interact with the Shardeum blockchain.
 You have access to tools via the Model Context Protocol (MCP).
 
+WHEN TO USE send_transaction:
+- Any request to send, transfer, pay, or move SHM tokens
+- Keywords: "send", "transfer", "pay", "move", "donate"
+- Example: "Send 5 SHM to 0x123..." → use send_transaction with params: {to: "0x123...", amount: "5"}
+- Example: "Pay 10 SHM to developer" → use send_transaction
+
 IMPORTANT - PUBLIC VS PRIVATE:
 - Standard "send_transaction" is PUBLIC. Everything is visible on the explorer.
 - "confidential_execute" is PRIVATE. Use this if the user says "private", "hidden", "secret", or "stealth".
@@ -68,6 +74,10 @@ Context:
                 const jsonMatch = rawResponse.match(/\{[\s\S]*\}/);
                 const jsonStr = jsonMatch ? jsonMatch[0] : rawResponse;
                 decision = JSON.parse(jsonStr);
+
+                // Store the original user prompt for on-chain logging
+                decision.originalPrompt = userPrompt;
+
                 updateLog(logId, {
                     status: 'Success',
                     consoleLogs: [`Reasoning: ${decision.thought}`, `Plan: Execute ${decision.tool || 'None'}`]
@@ -76,7 +86,8 @@ Context:
                 decision = {
                     thought: "Raw reasoning captured",
                     tool: null,
-                    explanation: rawResponse
+                    explanation: rawResponse,
+                    originalPrompt: userPrompt // Include original prompt in fallback too
                 };
                 updateLog(logId, { status: 'Success', consoleLogs: [`Fallback: Raw response parsed.`] });
             }
@@ -216,17 +227,32 @@ Try searching for:
                 case 'send_transaction':
                     if (!signer) throw new Error("Wallet not connected");
 
-                    // NEW: Attach the reasoning to the public transaction data
-                    // Instead of 0x, it will now show your intent in plain hex
-                    const publicReasoning = lastDecision?.thought || "Standard SHM Transfer";
-                    const data = ethers.hexlify(ethers.toUtf8Bytes(publicReasoning));
+                    // To work around Shardeum's "EOA-to-EOA cannot include data" restriction,
+                    // we route ALL transactions through the DecisionLogger contract.
+                    // This stores the USER'S ORIGINAL PROMPT on-chain in the Input Data field.
 
-                    const tx = await signer.sendTransaction({
-                        to: params.to,
-                        value: ethers.parseEther(params.amount.toString())
-                        // Removed 'data' because external accounts in Shardeum cannot include data in standard transfers
-                    });
-                    result = `Public Transaction Sent!\n• Hash: ${tx.hash}\n• Intent: ${publicReasoning}`;
+                    const userIntent = lastDecision?.originalPrompt || "AgentChain Transaction";
+
+                    // Convert user's original prompt to bytes (not encrypted - this is PUBLIC)
+                    const intentBytes = ethers.toUtf8Bytes(userIntent);
+
+                    // Use the same logger contract as confidential_execute
+                    const DECISION_LOGGER_ADDRESS = "0x168FDc3Ae19A5d5b03614578C58974FF30FCBe92";
+                    const loggerContract = new ethers.Contract(
+                        DECISION_LOGGER_ADDRESS,
+                        ["function logConfidentialDecision(bytes encryptedThought) external payable"],
+                        signer
+                    );
+
+                    console.log(`Logging PUBLIC transaction with user intent: "${userIntent}"`);
+                    const amountInWei = ethers.parseEther(params.amount.toString());
+
+                    const tx = await loggerContract.logConfidentialDecision(
+                        intentBytes, // User's original prompt as plain text bytes
+                        { value: amountInWei }
+                    );
+
+                    result = `Public Transaction Sent!\n• Hash: ${tx.hash}\n• Input Data: Your original prompt (view on explorer)\n• Intent: "${userIntent}"`;
                     break;
 
                 case 'get_wallet_address':
@@ -310,6 +336,9 @@ Try searching for:
                         // 1. ENCRYPT THE DATA
                         // We encrypt the amount and the reasoning separately for maximum privacy
                         const amountToEncrypt = (params?.value || "0").toString().replace(/[^0-9.]/g, '');
+
+                        // For private transactions, the 'input' in the logs will be the CIPHERTEXT
+                        // This matches the user's requirement to show ciphertext in place of input
                         const reasoning = lastDecision?.thought || "Private Execution";
 
                         // Encrypt both into a single batch or process them
@@ -339,7 +368,7 @@ Try searching for:
                                 `• **Funds Moved:** ${amountToEncrypt} SHM\n` +
                                 `• **Privacy Level:** High (Intent Scrambled)\n` +
                                 `• **Blockchain Proof:** [Tx ${tx.hash.slice(0, 10)}...](https://explorer-sphinx.shardeum.org/tx/${tx.hash})\n\n` +
-                                `**Usability Note:** Your balance has decreased, and your "Why" is locked behind Inco encryption. Only you can reveal the strategy.`;
+                                `**Usability Note:** The "Input Data" on-chain is now fully encrypted ciphertext.`;
 
                         } else {
                             throw new Error(amountResult.error || thoughtResult.error);
