@@ -1,0 +1,11 @@
+services:
+  - type: static
+    name: defy-agent-chain
+    env: static
+    buildCommand: npm run build
+    publishPath: dist
+    envVars:
+      - key: VITE_GEMINI_API_KEY
+        sync: false # User will need to set this in the dashboard
+      - key: NODE_VERSION
+        value: 20
