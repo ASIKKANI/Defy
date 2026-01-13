@@ -1,5 +1,12 @@
 // Use ngrok URL in production, local proxy in development
-const OLLAMA_HOST = import.meta.env.VITE_OLLAMA_URL || '/ollama';
+const ENV_URL = import.meta.env.VITE_OLLAMA_URL;
+const OLLAMA_HOST = ENV_URL ? ENV_URL.replace(/\/$/, '') : '/ollama';
+
+console.log("Ollama Config:", {
+    mode: import.meta.env.MODE,
+    host: OLLAMA_HOST,
+    usingEnv: !!ENV_URL
+});
 
 export const generateResponse = async (prompt, systemPrompt) => {
     const controller = new AbortController();
