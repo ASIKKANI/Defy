@@ -19,12 +19,9 @@
 
 ## 🎥 Product Demo
 
-> **Placeholder:** Insert a short walkthrough video demonstrating prompt input, AI reasoning, DAO approval, and on-chain verification.
-
 ```
-[Demo Video Placeholder]
+https://agentchain-explorer-cvevos.thinkroot.app/
 ```
-
 ---
 
 ## 🖼️ Application Preview
