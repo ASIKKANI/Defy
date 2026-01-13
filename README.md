@@ -22,6 +22,11 @@
 ```
 https://agentchain-explorer-cvevos.thinkroot.app/
 ```
+
+<div align="center">
+  <img src="images/video.gif" alt="AgentChain Demo" width="800" />
+</div>
+
 ---
 
 ## 🖼️ Application Preview
