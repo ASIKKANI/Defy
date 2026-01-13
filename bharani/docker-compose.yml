@@ -1,0 +1,9 @@
+services:
+  inco-lightning:
+    image: ghcr.io/inco-fhevm/lightning-node:latest
+    ports:
+      - "3000:3000"
+      - "8545:8545"
+    environment:
+      - NETWORK=testnet
+    restart: unless-stopped
