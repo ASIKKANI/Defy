@@ -10,7 +10,7 @@ export const generateResponse = async (prompt, systemPrompt) => {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                model: 'llama3',
+                model: 'llama3.1:latest',
                 messages: [
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: prompt }

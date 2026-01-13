@@ -66,7 +66,7 @@ Context:
             updateLog(logId, { consoleLogs: [`Context: Wallet=${userAddress}, Network=Shardeum EVM`] });
 
             // 1. Get AI Reasoning
-            updateLog(logId, { consoleLogs: [`Requesting LLM inference from Ollama (llama3)...`] });
+            updateLog(logId, { consoleLogs: [`Requesting LLM inference from Ollama (llama3.1:latest)...`] });
             const rawResponse = await generateResponse(contextPrompt + "\n" + userPrompt, SYSTEM_PROMPT);
 
             let decision;
@@ -313,15 +313,15 @@ Try searching for:
 
                         // Get user address from signer if available
                         const userAddress = signer ? await signer.getAddress() : null;
-                        const result = await encryptParameter(valueToEncrypt, params?.type || 'uint32', userAddress);
+                        const encryptionResult = await encryptParameter(valueToEncrypt, params?.type || 'uint32', userAddress);
 
-                        if (result.success) {
+                        if (encryptionResult.success) {
                             result = `✅ Data secured with Inco Lightning!\n\n` +
                                 `• Input: ${valueToEncrypt}\n` +
-                                `• Status: ${result.display}\n` +
-                                `• Ciphertext: ${result.ciphertext?.toString()?.slice(0, 32) || 'N/A'}... [TRUNCATED]`;
+                                `• Status: ${encryptionResult.display}\n` +
+                                `• Ciphertext: ${encryptionResult.ciphertext?.toString()?.slice(0, 32) || 'N/A'}... [TRUNCATED]`;
                         } else {
-                            throw new Error(result.error);
+                            throw new Error(encryptionResult.error);
                         }
                     } catch (e) {
                         result = `❌ Inco Encryption Failed: ${e.message}`;

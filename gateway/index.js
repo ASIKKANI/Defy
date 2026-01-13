@@ -50,7 +50,7 @@ app.post('/agent/run', async (req, res) => {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                model: 'llama3',
+                model: 'llama3.1:latest',
                 messages: [
                     {
                         role: 'system',
@@ -95,7 +95,19 @@ app.post('/agent/run', async (req, res) => {
 // Health check
 app.get('/health', (req, res) => res.json({ status: 'active', gateway: 'AgentChain-Adapter' }));
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
     console.log(`🚀 Integration API (Gateway) is running on http://localhost:${PORT}`);
     console.log(`🔗 Forwarding requests to: ${FRIEND_BACKEND_URL}`);
+});
+
+server.on('error', (error) => {
+    console.error('[Gateway] Server Error:', error);
+});
+
+process.on('uncaughtException', (err) => {
+    console.error('[Gateway] Uncaught Exception:', err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('[Gateway] Unhandled Rejection at:', promise, 'reason:', reason);
 });
