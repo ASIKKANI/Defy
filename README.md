@@ -32,15 +32,15 @@
 
 <div align="center">
 
-<img src="./images/dashboard.jpg" width="800"/>
+<img src="./images/dashboard.png" width="800"/>
 
-<img src="./images/activity.jpg" width="800"/>
+<img src="./images/activity.png" width="800"/>
 
-<img src="./images/governance.jpg" width="800"/>
+<img src="./images/governance.png" width="800"/>
 
-<img src="./images/inco1.jpg" width="800"/>
+<img src="./images/inco1.png" width="800"/>
 
-<img src="./images/inco2.jpg" width="800"/>
+<img src="./images/inco2.png" width="800"/>
 
 </div>
 
