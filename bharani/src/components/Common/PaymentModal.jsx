@@ -10,7 +10,7 @@ import {
     CheckCircle2
 } from 'lucide-react';
 
-const PaymentModal = ({ isOpen, onClose, planName = "Premium Model Access", amount = "249.99" }) => {
+const PaymentModal = ({ isOpen, onClose, planName = "Premium Model Access", amount = "249.99", onSuccess }) => {
     const [method, setMethod] = useState('card'); // card, upi
     const [isProcessing, setIsProcessing] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
@@ -23,6 +23,10 @@ const PaymentModal = ({ isOpen, onClose, planName = "Premium Model Access", amou
         setTimeout(() => {
             setIsProcessing(false);
             setIsSuccess(true);
+
+            // Trigger upgrade immediately
+            if (onSuccess) onSuccess();
+
             setTimeout(() => {
                 setIsSuccess(false);
                 onClose();

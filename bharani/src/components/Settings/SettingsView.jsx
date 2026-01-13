@@ -12,6 +12,7 @@ import {
     Save,
     Trash2
 } from 'lucide-react';
+import AccessTierCard from '../Access/AccessTierCard';
 
 const SettingsView = () => {
     const [rpc, setRpc] = useState('https://sphinx.shardeum.org');
@@ -28,7 +29,12 @@ const SettingsView = () => {
                 </h1>
             </header>
 
-            <div className="space-y-12 pb-20">
+            <div className="space-y-16 pb-20">
+                {/* Access Gating Section */}
+                <section>
+                    <AccessTierCard />
+                </section>
+
                 {/* Risk Safety Limits */}
                 <section className="space-y-8">
                     <h3 className="text-xs font-black uppercase tracking-[0.3em] text-white/40 flex items-center gap-3">

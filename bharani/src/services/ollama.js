@@ -2,7 +2,7 @@ const OLLAMA_HOST = '/ollama';
 
 export const generateResponse = async (prompt, systemPrompt) => {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+    const timeoutId = setTimeout(() => controller.abort(), 90000); // 90s timeout
 
     try {
         console.log(`Ollama: Fetching ${OLLAMA_HOST}/api/chat...`);
@@ -34,8 +34,8 @@ export const generateResponse = async (prompt, systemPrompt) => {
     } catch (error) {
         clearTimeout(timeoutId);
         if (error.name === 'AbortError') {
-            console.error("Ollama: Request timed out after 30 seconds");
-            throw new Error("Ollama timeout: The model is taking too long to respond.");
+            console.error("Ollama: Request timed out after 90 seconds");
+            throw new Error("Ollama timeout: The model is taking too long to respond (90s limit).");
         }
         console.error("Ollama: Fetch failure", error);
         throw error;

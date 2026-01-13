@@ -20,13 +20,16 @@ import {
 } from 'lucide-react';
 import { useVoice } from '../../hooks/useVoice';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAccess, ACCESS_LEVELS } from '../../context/AccessContext';
 
 const InteractionPane = ({ agent, onBack, useAgent, provider, signer }) => {
+    const { tier } = useAccess();
     const [step, setStep] = useState('input'); // input, consensus, plan, success
     const [prompt, setPrompt] = useState('');
-    const [simulationMode, setSimulationMode] = useState(false);
+    const [simulationMode, setSimulationMode] = useState(tier === ACCESS_LEVELS.PRO);
     const [messages, setMessages] = useState([]);
     const [currentDecision, setCurrentDecision] = useState(null);
+    const [accessError, setAccessError] = useState(null);
 
     const { processPrompt, executeTool, isThinking } = useAgent(provider, signer);
     const { isListening, transcript, startListening, stopListening, speak, isSupported } = useVoice();
@@ -40,12 +43,25 @@ const InteractionPane = ({ agent, onBack, useAgent, provider, signer }) => {
     const handleRun = async (forceConsensus = false) => {
         if (!prompt.trim() || isThinking) return;
 
+        // ACS GATE: Consensus
+        if (forceConsensus && tier === ACCESS_LEVELS.FREE) {
+            setAccessError("ACCESS DENIED: Multi-Agent Consensus is restricted to PRO tier nodes.");
+            speak("Access denied. Consensus layer restricted to PRO tier.");
+            setTimeout(() => setAccessError(null), 3000);
+            return;
+        }
+
         const response = await processPrompt(prompt);
         setCurrentDecision(response);
 
         if (forceConsensus === true || prompt.toLowerCase().includes('consensus') || prompt.toLowerCase().includes('strategy')) {
-            setStep('consensus');
-            speak("I've generated a multi-model consensus for this strategy. Please select a path.");
+            if (tier === ACCESS_LEVELS.FREE) {
+                setStep('plan');
+                speak(response.explanation || "I've drafted an execution plan.");
+            } else {
+                setStep('consensus');
+                speak("I've generated a multi-model consensus for this strategy. Please select a path.");
+            }
         } else {
             setStep('plan');
             speak(response.explanation || "I've drafted an execution plan. Please review the cognitive steps.");
@@ -145,7 +161,14 @@ const InteractionPane = ({ agent, onBack, useAgent, provider, signer }) => {
                                 ))}
                             </div>
 
-                            <div className="p-8 rounded-[32px] border border-green-900/10 bg-green-900/5 grid grid-cols-2 gap-8">
+                            <div className="p-8 rounded-[32px] border border-green-900/10 bg-green-900/5 grid grid-cols-2 gap-8 relative overflow-hidden">
+                                {tier === ACCESS_LEVELS.FREE && (
+                                    <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] z-10 flex items-center justify-center">
+                                        <div className="px-4 py-2 rounded-lg bg-black border border-white/10 text-[10px] font-black uppercase tracking-widest text-white/40">
+                                            PRO Upgrade Required
+                                        </div>
+                                    </div>
+                                )}
                                 <div className="space-y-4">
                                     <div className="flex items-center justify-between">
                                         <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white">Execution Mode</span>
@@ -154,8 +177,9 @@ const InteractionPane = ({ agent, onBack, useAgent, provider, signer }) => {
                                         </span>
                                     </div>
                                     <button
-                                        onClick={() => setSimulationMode(!simulationMode)}
-                                        className="w-full flex items-center justify-between p-3 rounded-xl bg-black/40 border border-white/5 group"
+                                        onClick={() => tier === ACCESS_LEVELS.PRO && setSimulationMode(!simulationMode)}
+                                        disabled={tier === ACCESS_LEVELS.FREE}
+                                        className="w-full flex items-center justify-between p-3 rounded-xl bg-black/40 border border-white/5 group disabled:opacity-50"
                                     >
                                         <div className="flex items-center gap-3">
                                             {simulationMode ? <Activity size={16} className="text-yellow-500" /> : <ShieldCheck size={16} className="text-primary" />}
@@ -172,30 +196,51 @@ const InteractionPane = ({ agent, onBack, useAgent, provider, signer }) => {
                                     <div className="relative">
                                         <input
                                             type="password"
-                                            placeholder="Risk Tolerance (Masked)"
-                                            className="w-full bg-black/40 border border-white/5 p-3 pr-10 rounded-xl text-xs text-white outline-none focus:border-primary/40"
+                                            disabled={tier === ACCESS_LEVELS.FREE}
+                                            placeholder={tier === ACCESS_LEVELS.FREE ? "PRO FEATURE LOCKED" : "Risk Tolerance (Masked)"}
+                                            className="w-full bg-black/40 border border-white/5 p-3 pr-10 rounded-xl text-xs text-white outline-none focus:border-primary/40 disabled:opacity-30 disabled:cursor-not-allowed"
                                         />
                                         <EyeOff size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/20" />
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-6">
-                                <button
-                                    onClick={() => handleRun(true)}
-                                    className="py-5 rounded-2xl bg-white/5 border border-white/10 text-[11px] font-black tracking-[0.3em] uppercase text-white/40 hover:text-white transition-all flex items-center justify-center gap-3 group"
-                                >
-                                    <BrainCircuit size={18} className="group-hover:rotate-12 transition-transform" />
-                                    Consensus
-                                </button>
-                                <button
-                                    onClick={handleRun}
-                                    disabled={isThinking}
-                                    className="py-5 rounded-2xl bg-primary text-black text-[11px] font-black tracking-[0.3em] uppercase hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 shadow-glow"
-                                >
-                                    {isThinking ? <Loader2 size={18} className="animate-spin" /> : <Zap size={18} className="fill-current" />}
-                                    Run Model
-                                </button>
+                            <div className="space-y-6">
+                                <AnimatePresence>
+                                    {accessError && (
+                                        <motion.div
+                                            initial={{ opacity: 0, height: 0 }}
+                                            animate={{ opacity: 1, height: 'auto' }}
+                                            exit={{ opacity: 0, height: 0 }}
+                                            className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-[10px] font-black text-red-500 uppercase tracking-widest flex items-center gap-3"
+                                        >
+                                            <Lock size={14} />
+                                            {accessError}
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+
+                                <div className="grid grid-cols-2 gap-6">
+                                    <button
+                                        onClick={() => handleRun(true)}
+                                        className={`py-5 rounded-2xl border text-[11px] font-black tracking-[0.3em] uppercase transition-all flex items-center justify-center gap-3 group ${tier === ACCESS_LEVELS.FREE
+                                                ? 'bg-black border-white/5 text-white/20 cursor-not-allowed'
+                                                : 'bg-white/5 border-white/10 text-white/40 hover:text-white'
+                                            }`}
+                                    >
+                                        <BrainCircuit size={18} className={tier === ACCESS_LEVELS.PRO ? "group-hover:rotate-12 transition-transform" : ""} />
+                                        {tier === ACCESS_LEVELS.FREE && <Lock size={14} />}
+                                        Consensus
+                                    </button>
+                                    <button
+                                        onClick={() => handleRun(false)}
+                                        disabled={isThinking}
+                                        className="py-5 rounded-2xl bg-primary text-black text-[11px] font-black tracking-[0.3em] uppercase hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 shadow-glow"
+                                    >
+                                        {isThinking ? <Loader2 size={18} className="animate-spin" /> : <Zap size={18} className="fill-current" />}
+                                        Run Model
+                                    </button>
+                                </div>
                             </div>
                         </motion.div>
                     )}
@@ -350,19 +395,33 @@ const InteractionPane = ({ agent, onBack, useAgent, provider, signer }) => {
                                 <div className="p-8 rounded-[32px] bg-black/80 border border-primary/20 flex flex-col gap-6">
                                     <div className="flex justify-between items-center">
                                         <div className="flex items-center gap-2">
-                                            <ShieldCheck size={16} className="text-primary" />
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-primary">Security Verified</span>
+                                            {simulationMode ? (
+                                                <Activity size={16} className="text-yellow-500" />
+                                            ) : (
+                                                <ShieldCheck size={16} className="text-primary" />
+                                            )}
+                                            <span className={`text-[10px] font-black uppercase tracking-widest ${simulationMode ? 'text-yellow-500' : 'text-primary'}`}>
+                                                {simulationMode ? 'Simulation Mode Active' : 'Live Execution Ready'}
+                                            </span>
                                         </div>
                                         <div className="flex flex-col text-right">
-                                            <span className="text-[10px] text-white/30 uppercase font-bold">Est. Gas Overhead</span>
-                                            <span className="text-sm font-black text-white">0.0042 SHM</span>
+                                            <span className="text-[10px] text-white/30 uppercase font-bold">Risk Protocol</span>
+                                            <span className="text-sm font-black text-white">{simulationMode ? 'SANDBOX' : 'MAINNET'}</span>
                                         </div>
                                     </div>
+
+                                    {!simulationMode && (
+                                        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-[10px] text-red-500 font-bold uppercase leading-relaxed">
+                                            ⚠️ Warning: You are about to move real assets on the Shardeum network. This action is irreversible.
+                                        </div>
+                                    )}
+
                                     <button
                                         onClick={handleExecute}
-                                        className="w-full py-5 rounded-2xl bg-primary text-black text-xs font-black uppercase tracking-[0.4em] hover:scale-[1.02] active:scale-[0.98] transition-all shadow-glow"
+                                        className={`w-full py-5 rounded-2xl text-black text-xs font-black uppercase tracking-[0.4em] hover:scale-[1.02] active:scale-[0.98] transition-all shadow-glow ${simulationMode ? 'bg-yellow-500 shadow-[0_0_20px_rgba(234,179,8,0.3)]' : 'bg-primary'
+                                            }`}
                                     >
-                                        Approve & Execute
+                                        {simulationMode ? 'Run Simulation' : 'Confirm Live Transaction'}
                                     </button>
                                 </div>
                             </div>

@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePayment } from '../../context/PaymentContext';
+import { useAccess, ACCESS_LEVELS } from '../../context/AccessContext';
 
 const MOCK_AGENTS = [
     {
@@ -200,6 +201,7 @@ const AgentCard = ({ agent, onInteract }) => {
 };
 
 const AgentDashboard = ({ onSelectAgent }) => {
+    const { tier } = useAccess();
     const [search, setSearch] = useState('');
     const [selectedPremium, setSelectedPremium] = useState(null);
 
@@ -214,6 +216,13 @@ const AgentDashboard = ({ onSelectAgent }) => {
     return (
         <div className="p-12 max-w-7xl mx-auto h-full overflow-y-auto">
             <header className="mb-16">
+                <div className="flex items-center gap-3 text-primary mb-4">
+                    <Cpu size={20} />
+                    <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-black uppercase tracking-[0.5em]">{tier} NODE ACTIVE</span>
+                        <div className={`w-1.5 h-1.5 rounded-full animate-pulse shadow-[0_0_5px] ${tier === ACCESS_LEVELS.PRO ? 'bg-purple-500 shadow-purple-500' : 'bg-primary shadow-primary'}`} />
+                    </div>
+                </div>
                 <h1 className="text-6xl font-black uppercase tracking-tighter text-white mb-4 leading-none">
                     Verified AI <span className="gradient-text">Models</span>
                 </h1>

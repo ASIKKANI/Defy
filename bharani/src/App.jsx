@@ -11,12 +11,15 @@ import SettingsView from './components/Settings/SettingsView';
 import { AnimatePresence, motion } from 'framer-motion';
 import Plasma from './components/Effects/Plasma';
 import { PaymentProvider } from './context/PaymentContext';
+import { AccessProvider } from './context/AccessContext';
 
 const App = () => {
     return (
-        <PaymentProvider>
-            <AppContent />
-        </PaymentProvider>
+        <AccessProvider>
+            <PaymentProvider>
+                <AppContent />
+            </PaymentProvider>
+        </AccessProvider>
     );
 };
 

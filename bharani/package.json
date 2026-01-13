@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@inco/js": "^0.7.10",
     "clsx": "^2.1.1",
     "ethers": "^6.16.0",
