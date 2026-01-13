@@ -150,13 +150,18 @@ const InteractionPane = ({ agent, onBack, useAgent, provider, signer }) => {
                             </div>
 
                             <div className="flex flex-wrap gap-3">
-                                {['Maximize Yield', 'Balance Portfolio', 'Private Swap', 'Gas Audit'].map((tag) => (
+                                {[
+                                    { label: 'Check BTC Value', prompt: 'What is the current price of BTC?' },
+                                    { label: 'Private Bounty', prompt: 'Pay a private transaction of 1 SHM to myself for bounty' },
+                                    { label: 'My Balance', prompt: 'What is my current SHM balance?' },
+                                    { label: 'Network Info', prompt: 'What Shardeum network am I connected to?' }
+                                ].map((item) => (
                                     <button
-                                        key={tag}
-                                        onClick={() => setPrompt(`Protocol: ${tag}. Action: Enforce strategy.`)}
+                                        key={item.label}
+                                        onClick={() => setPrompt(item.prompt)}
                                         className="px-4 py-2 rounded-full border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-primary hover:border-primary/40 transition-all"
                                     >
-                                        {tag}
+                                        {item.label}
                                     </button>
                                 ))}
                             </div>
@@ -224,8 +229,8 @@ const InteractionPane = ({ agent, onBack, useAgent, provider, signer }) => {
                                     <button
                                         onClick={() => handleRun(true)}
                                         className={`py-5 rounded-2xl border text-[11px] font-black tracking-[0.3em] uppercase transition-all flex items-center justify-center gap-3 group ${tier === ACCESS_LEVELS.FREE
-                                                ? 'bg-black border-white/5 text-white/20 cursor-not-allowed'
-                                                : 'bg-white/5 border-white/10 text-white/40 hover:text-white'
+                                            ? 'bg-black border-white/5 text-white/20 cursor-not-allowed'
+                                            : 'bg-white/5 border-white/10 text-white/40 hover:text-white'
                                             }`}
                                     >
                                         <BrainCircuit size={18} className={tier === ACCESS_LEVELS.PRO ? "group-hover:rotate-12 transition-transform" : ""} />

@@ -51,14 +51,35 @@ const AppContent = () => {
 
         // Listen for account changes
         if (window.ethereum) {
-            window.ethereum.on('accountsChanged', (accounts) => {
+            const handleAccountsChanged = async (accounts) => {
                 if (accounts.length > 0) {
                     setAddress(accounts[0]);
+                    try {
+                        const p = new ethers.BrowserProvider(window.ethereum);
+                        const s = await p.getSigner();
+                        setSigner(s);
+                        setProvider(p);
+                    } catch (e) {
+                        console.error("Signer update error:", e);
+                    }
                 } else {
                     setAddress('');
                     setSigner(null);
                 }
-            });
+            };
+
+            const handleChainChanged = () => {
+                // Reload the page or just re-init everything
+                window.location.reload();
+            };
+
+            window.ethereum.on('accountsChanged', handleAccountsChanged);
+            window.ethereum.on('chainChanged', handleChainChanged);
+
+            return () => {
+                window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
+                window.ethereum.removeListener('chainChanged', handleChainChanged);
+            };
         }
     }, []);
 
@@ -99,6 +120,8 @@ const AppContent = () => {
                 address={address}
                 setAddress={setAddress}
                 signer={signer}
+                setSigner={setSigner}
+                setProvider={setProvider}
                 activeView={activeView}
                 setActiveView={setActiveView}
             />

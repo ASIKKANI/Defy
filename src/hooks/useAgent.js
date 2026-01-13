@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { generateResponse } from '../services/ollama';
+import { generateResponse } from '../services/gemini';
 import { MCP_TOOLS } from '../services/mcp-tools';
 import { ethers } from 'ethers';
 import { addLog, updateLog } from '../services/log-service';
@@ -66,14 +66,23 @@ Context:
             updateLog(logId, { consoleLogs: [`Context: Wallet=${userAddress}, Network=Shardeum EVM`] });
 
             // 1. Get AI Reasoning
-            updateLog(logId, { consoleLogs: [`Requesting LLM inference from Ollama (llama3)...`] });
+            updateLog(logId, { consoleLogs: [`Requesting LLM inference from Google Gemini (Flash)...`] });
             const rawResponse = await generateResponse(contextPrompt + "\n" + userPrompt, SYSTEM_PROMPT);
+
+            console.log("Agent: Raw LLM Response:", rawResponse);
 
             let decision;
             try {
-                const jsonMatch = rawResponse.match(/\{[\s\S]*\}/);
-                const jsonStr = jsonMatch ? jsonMatch[0] : rawResponse;
-                decision = JSON.parse(jsonStr);
+                // Sanitize response: remove markdown code blocks
+                let cleanJson = rawResponse.replace(/```json/g, '').replace(/```/g, '').trim();
+
+                // Try to find the JSON object if there's extra text
+                const jsonMatch = cleanJson.match(/\{[\s\S]*\}/);
+                if (jsonMatch) {
+                    cleanJson = jsonMatch[0];
+                }
+
+                decision = JSON.parse(cleanJson);
 
                 // Store the original user prompt for on-chain logging
                 decision.originalPrompt = userPrompt;
@@ -83,6 +92,7 @@ Context:
                     consoleLogs: [`Reasoning: ${decision.thought}`, `Plan: Execute ${decision.tool || 'None'}`]
                 });
             } catch (e) {
+                console.error("Agent: JSON Parse Error", e);
                 decision = {
                     thought: "Raw reasoning captured",
                     tool: null,
@@ -227,32 +237,70 @@ Try searching for:
                 case 'send_transaction':
                     if (!signer) throw new Error("Wallet not connected");
 
-                    // To work around Shardeum's "EOA-to-EOA cannot include data" restriction,
-                    // we route ALL transactions through the DecisionLogger contract.
-                    // This stores the USER'S ORIGINAL PROMPT on-chain in the Input Data field.
+                    // 1. Verify Network
+                    const network = await provider.getNetwork();
+                    console.log(`[Agent] Executing on Network ID: ${network.chainId}`);
 
-                    const userIntent = lastDecision?.originalPrompt || "AgentChain Transaction";
+                    // Support Atomium (8081), Sphinx (8082), and EVM Testnet (8119)
+                    if (network.chainId !== 8081n && network.chainId !== 8082n && network.chainId !== 8119n) {
+                        console.warn("⚠️ Network Mismatch: Not on a recognized Shardeum EVM Testnet!");
+                    }
 
-                    // Convert user's original prompt to bytes (not encrypted - this is PUBLIC)
-                    const intentBytes = ethers.toUtf8Bytes(userIntent);
-
-                    // Use the same logger contract as confidential_execute
-                    const DECISION_LOGGER_ADDRESS = "0x168FDc3Ae19A5d5b03614578C58974FF30FCBe92";
-                    const loggerContract = new ethers.Contract(
-                        DECISION_LOGGER_ADDRESS,
-                        ["function logConfidentialDecision(bytes encryptedThought) external payable"],
-                        signer
-                    );
-
-                    console.log(`Logging PUBLIC transaction with user intent: "${userIntent}"`);
                     const amountInWei = ethers.parseEther(params.amount.toString());
+                    let targetRecipient = params.to;
 
-                    const tx = await loggerContract.logConfidentialDecision(
-                        intentBytes, // User's original prompt as plain text bytes
-                        { value: amountInWei }
-                    );
+                    // Support sending to "myself"
+                    if (!targetRecipient || targetRecipient.toLowerCase() === 'myself' || targetRecipient.toLowerCase() === 'me') {
+                        targetRecipient = await signer.getAddress();
+                    }
 
-                    result = `Public Transaction Sent!\n• Hash: ${tx.hash}\n• Input Data: Your original prompt (view on explorer)\n• Intent: "${userIntent}"`;
+                    console.log(`[Agent] Sending ${params.amount} SHM to ${targetRecipient}`);
+
+                    // SHM Token Configuration
+                    const SHM_TOKEN_ADDRESS = null; // Set this if SHM is an ERC-20
+
+                    if (SHM_TOKEN_ADDRESS) {
+                        // ERC-20 Transfer
+                        const shm = new ethers.Contract(
+                            SHM_TOKEN_ADDRESS,
+                            ["function transfer(address,uint256) returns (bool)"],
+                            signer
+                        );
+                        const tx = await shm.transfer(targetRecipient, amountInWei);
+                        result = `ERC-20 SHM Sent!\n• Hash: ${tx.hash}\n• Recipient: ${targetRecipient}`;
+                    } else {
+                        // Native SHM Transfer
+                        // We use the DecisionLogger ONLY if we need to store metadata,
+                        // otherwise we do a direct transfer to ensure the recipient gets the funds.
+                        const userIntent = lastDecision?.originalPrompt || "AgentChain Transaction";
+                        const intentBytes = ethers.toUtf8Bytes(userIntent);
+
+                        // Decision Logger (Optional storage)
+                        const DECISION_LOGGER_ADDRESS = "0x168FDc3Ae19A5d5b03614578C58974FF30FCBe92";
+
+                        try {
+                            const loggerContract = new ethers.Contract(
+                                DECISION_LOGGER_ADDRESS,
+                                ["function logConfidentialDecision(bytes encryptedThought) external payable"],
+                                signer
+                            );
+
+                            // Log and Send
+                            const tx = await loggerContract.logConfidentialDecision(
+                                intentBytes,
+                                { value: amountInWei }
+                            );
+                            result = `Native SHM Sent via Logger!\n• Hash: ${tx.hash}\n• User Intent: "${userIntent}"`;
+                        } catch (e) {
+                            console.log("Logger failed or not available, falling back to direct transfer...");
+                            // Direct EOA-to-EOA transfer
+                            const tx = await signer.sendTransaction({
+                                to: targetRecipient,
+                                value: amountInWei
+                            });
+                            result = `Direct Native SHM Sent!\n• Hash: ${tx.hash}\n• From: ${await signer.getAddress()}\n• To: ${targetRecipient}`;
+                        }
+                    }
                     break;
 
                 case 'get_wallet_address':
@@ -313,15 +361,15 @@ Try searching for:
 
                         // Get user address from signer if available
                         const userAddress = signer ? await signer.getAddress() : null;
-                        const result = await encryptParameter(valueToEncrypt, params?.type || 'uint32', userAddress);
+                        const encryptionResult = await encryptParameter(valueToEncrypt, params?.type || 'uint32', userAddress);
 
-                        if (result.success) {
+                        if (encryptionResult.success) {
                             result = `✅ Data secured with Inco Lightning!\n\n` +
                                 `• Input: ${valueToEncrypt}\n` +
-                                `• Status: ${result.display}\n` +
-                                `• Ciphertext: ${result.ciphertext?.toString()?.slice(0, 32) || 'N/A'}... [TRUNCATED]`;
+                                `• Status: ${encryptionResult.display}\n` +
+                                `• Ciphertext: ${encryptionResult.ciphertext?.toString()?.slice(0, 32) || 'N/A'}... [TRUNCATED]`;
                         } else {
-                            throw new Error(result.error);
+                            throw new Error(encryptionResult.error);
                         }
                     } catch (e) {
                         result = `❌ Inco Encryption Failed: ${e.message}`;
@@ -367,7 +415,7 @@ Try searching for:
                             result = `🛡️ **Stealth Transaction Executed**\n\n` +
                                 `• **Funds Moved:** ${amountToEncrypt} SHM\n` +
                                 `• **Privacy Level:** High (Intent Scrambled)\n` +
-                                `• **Blockchain Proof:** [Tx ${tx.hash.slice(0, 10)}...](https://explorer-sphinx.shardeum.org/tx/${tx.hash})\n\n` +
+                                `• **Blockchain Proof:** [Tx ${tx.hash.slice(0, 10)}...](https://explorer-evm.shardeum.org/tx/${tx.hash})\n\n` +
                                 `**Usability Note:** The "Input Data" on-chain is now fully encrypted ciphertext.`;
 
                         } else {

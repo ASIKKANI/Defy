@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { ethers } from 'ethers';
 
-const Sidebar = ({ address, setAddress, signer, activeView, setActiveView = () => { } }) => {
+const Sidebar = ({ address, setAddress, signer, setSigner, setProvider, activeView, setActiveView = () => { } }) => {
     const [collapsed, setCollapsed] = useState(false);
     const [balance, setBalance] = useState('0.00');
 
@@ -27,11 +27,42 @@ const Sidebar = ({ address, setAddress, signer, activeView, setActiveView = () =
         const fetchBalance = async () => {
             if (address && signer) {
                 try {
-                    const bal = await signer.provider.getBalance(address);
-                    setBalance(ethers.formatEther(bal).slice(0, 6));
+                    // Always get a fresh provider instance to avoid NETWORK_ERROR (1 => 8119)
+                    const currentProvider = new ethers.BrowserProvider(window.ethereum);
+
+                    // DEBUG: Check Network
+                    const net = await currentProvider.getNetwork();
+                    console.log(`[Wallet Debug] Connected to: ${net.name} (Chain ID: ${net.chainId})`);
+
+                    // SHM ERC-20 Check
+                    const SHM_TOKEN_ADDRESS = null;
+
+                    let bal;
+                    if (SHM_TOKEN_ADDRESS) {
+                        const shmContract = new ethers.Contract(
+                            SHM_TOKEN_ADDRESS,
+                            ["function balanceOf(address) view returns (uint256)"],
+                            currentProvider
+                        );
+                        bal = await shmContract.balanceOf(address);
+                    } else {
+                        bal = await currentProvider.getBalance(address);
+                    }
+
+                    const formatted = ethers.formatEther(bal);
+                    setBalance(formatted.slice(0, 8));
                 } catch (e) {
-                    console.error("Balance fetch error:", e);
+                    if (e.code === 'NETWORK_ERROR') {
+                        console.log("Network change detected, retrying balance fetch...");
+                        // Brief delay to allow MetaMask state to settle
+                        setTimeout(fetchBalance, 500);
+                    } else {
+                        console.error("Balance fetch error:", e);
+                        setBalance('0.00');
+                    }
                 }
+            } else {
+                setBalance('0.00');
             }
         };
         fetchBalance();
@@ -49,8 +80,45 @@ const Sidebar = ({ address, setAddress, signer, activeView, setActiveView = () =
     const connectWallet = async () => {
         if (window.ethereum) {
             try {
-                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-                setAddress(accounts[0]);
+                const p = new ethers.BrowserProvider(window.ethereum);
+
+                // 1. Request Accounts
+                const accounts = await p.send("eth_requestAccounts", []);
+                const s = await p.getSigner();
+
+                // 2. Check & Switch Network
+                const net = await p.getNetwork();
+                const TARGET_CHAIN_ID = "0x1fb7"; // 8119 (Shardeum EVM Testnet)
+
+                if (net.chainId !== 8119n) {
+                    console.log("Wrong network detected. Prompting switch...");
+                    try {
+                        await window.ethereum.request({
+                            method: 'wallet_switchEthereumChain',
+                            params: [{ chainId: TARGET_CHAIN_ID }],
+                        });
+                    } catch (switchError) {
+                        // This error code indicates that the chain has not been added to MetaMask.
+                        if (switchError.code === 4902) {
+                            await window.ethereum.request({
+                                method: 'wallet_addEthereumChain',
+                                params: [{
+                                    chainId: TARGET_CHAIN_ID,
+                                    chainName: 'Shardeum EVM Testnet',
+                                    nativeCurrency: { name: 'SHM', symbol: 'SHM', decimals: 18 },
+                                    rpcUrls: ['https://lb.shardeum.org/'],
+                                    blockExplorerUrls: ['https://explorer-evm.shardeum.org/']
+                                }],
+                            });
+                        }
+                    }
+                }
+
+                // 3. Update parent state
+                if (setProvider) setProvider(p);
+                if (setSigner) setSigner(s);
+                if (setAddress) setAddress(accounts[0]);
+
             } catch (err) {
                 console.error("Wallet connection failed", err);
             }
@@ -80,7 +148,7 @@ const Sidebar = ({ address, setAddress, signer, activeView, setActiveView = () =
                             <span className="font-black text-xl tracking-tighter text-white uppercase italic">AgentChain</span>
                             <div className="flex items-center gap-1.5">
                                 <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse shadow-[0_0_5px_#00FF41]" />
-                                <span className="text-[10px] text-primary font-bold uppercase tracking-widest">Shardeum Sphinx</span>
+                                <span className="text-[10px] text-primary font-bold uppercase tracking-widest">Shardeum EVM</span>
                             </div>
                         </div>
                     )}

@@ -4,35 +4,47 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY?.trim();
 
 let genAI = null;
+let model = null;
+
 if (API_KEY) {
     genAI = new GoogleGenerativeAI(API_KEY);
+    // Use Gemini 2.5 Flash - fast and efficient
+    model = genAI.getGenerativeModel({
+        model: "gemini-2.5-flash",
+        generationConfig: {
+            responseMimeType: "application/json"
+        }
+    });
+} else {
+    console.error("❌ VITE_GEMINI_API_KEY is missing in .env file!");
 }
 
-export const generateGeminiResponse = async (prompt, contextData = null) => {
-    if (!genAI) {
-        // Fallback for demo purposes if no key is provided, or throw error
-        // For a seamless "good looking" demo, we might want to return a simulated response if the key is missing
-        // but explicit error is better for development.
-        console.warn("Gemini API Key missing (VITE_GEMINI_API_KEY). Returning mock response.");
-        return "I can't connect to the Gemini Network right now (API Key missing). Please check your neural link credentials.";
+export const generateResponse = async (prompt, systemPrompt) => {
+    if (!model) {
+        throw new Error("Gemini API Key is missing or invalid. Please check your .env file.");
     }
 
     try {
-        // Using 'gemini-flash-latest' as it was explicitly listed in your available models
-        const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+        console.log("Gemini: Sending request with system prompt...");
 
-        let systemInstruction = "You are a specialized Blockchain Forensic Auditor AI. Your job is to explain complex transaction logs to users in simple, clear terms. Analyze the provided transaction context.";
+        // Construct a structured prompt
+        // Since getGenerativeModel systemInstruction support varies by version/platform, 
+        // we'll explicitly include it in the user flow for robustness.
+        const fullPrompt = `${systemPrompt}\n\nUSER REQUEST: ${prompt}`;
 
-        if (contextData) {
-            systemInstruction += `\n\nTRANSACTION CONTEXT:\n${JSON.stringify(contextData, null, 2)}`;
-        }
-
-        const result = await model.generateContent(`${systemInstruction}\n\nUSER QUESTION: ${prompt}`);
+        const result = await model.generateContent(fullPrompt);
         const response = await result.response;
-        return response.text();
+        const text = response.text();
+
+        console.log("Gemini: Success response received");
+        return text;
+
     } catch (error) {
         console.error("Gemini Interaction Failed:", error);
-        // Return the actual error to the UI so we can debug it (e.g., 400 vs 403 vs 500)
-        return `Connection Error [${error.status || 'Unknown'}]: ${error.message}. \n\nTarget Model: gemini-flash-latest`;
+        throw new Error(`Gemini API Error: ${error.message}`);
     }
+};
+
+export const checkHealth = async () => {
+    return !!model;
 };

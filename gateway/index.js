@@ -14,6 +14,52 @@ const FRIEND_BACKEND_URL = process.env.FRIEND_BACKEND_URL || 'http://127.0.0.1:1
 // Middleware
 app.use(helmet()); // Basic security headers
 app.use(cors({ origin: '*' })); // Enable CORS for ThinkRoot
+// IMPORTANT: We need raw body for proxying sometimes, but json is fine for Ollama API usually.
+// However, to proxy effectively, we'll intercept /api routes manually before express.json() parses them if needed,
+// but for simplicity, we keep express.json() for the custom agent route.
+
+// --- PROXY HANDLER FOR OLLAMA ---
+app.use('/api', async (req, res) => {
+    // Explicit CORS for every proxy response
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+
+    if (req.method === 'OPTIONS') {
+        return res.sendStatus(200);
+    }
+
+    try {
+        const url = `${FRIEND_BACKEND_URL}/api${req.url}`;
+        console.log(`[Proxy] Forwarding ${req.method} to ${url}`);
+
+        const response = await fetch(url, {
+            method: req.method,
+            headers: {
+                'Content-Type': 'application/json',
+                ...req.headers,
+                host: 'localhost:11434' // Spoof host for Ollama
+            },
+            body: ['GET', 'HEAD'].includes(req.method) ? undefined : JSON.stringify(req.body)
+        });
+
+        // Forward status and headers
+        res.status(response.status);
+        response.headers.forEach((val, key) => res.setHeader(key, val));
+
+        // Pipe response body
+        if (response.body) {
+            const arrayBuffer = await response.arrayBuffer();
+            res.send(Buffer.from(arrayBuffer));
+        } else {
+            res.end();
+        }
+    } catch (e) {
+        console.error("Proxy Error", e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
 app.use(express.json());
 
 // Health check

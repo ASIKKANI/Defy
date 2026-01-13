@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getLogs, subscribeLogs, clearLogs } from '../../services/log-service';
-import { generateGeminiResponse } from '../../services/gemini';
+import { generateResponse } from '../../services/gemini';
 import { Trash2 } from 'lucide-react';
 
 const GeminiChatPanel = ({ log }) => {
@@ -50,7 +50,7 @@ const GeminiChatPanel = ({ log }) => {
         setIsTyping(true);
 
         try {
-            const reply = await generateGeminiResponse(userMsg, log);
+            const reply = await generateResponse(userMsg, `Context: ${JSON.stringify(log)}`);
             setMessages(prev => [...prev, { role: 'bot', content: reply }]);
         } catch (error) {
             setMessages(prev => [...prev, { role: 'bot', content: "Encryption error: Unable to reach the neural core." }]);
