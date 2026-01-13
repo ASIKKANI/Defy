@@ -21,6 +21,8 @@
 
 ```
 https://agentchain-explorer-cvevos.thinkroot.app/
+
+https://defy-theta.vercel.app/
 ```
 
 <div align="center">
