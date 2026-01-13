@@ -32,10 +32,20 @@
 > **Placeholder:** Screenshots of the AgentChain interface.
 
 ```
-[Landing Page Screenshot]
-[Dashboard Screenshot]
-[Decision Explanation Modal Screenshot]
-[DAO Governance View Screenshot]
+<div align="center">
+
+<img src="./images/dashboard.jpg" width="800"/>
+
+<img src="./images/activity.jpg" width="800"/>
+
+<img src="./images/governance.jpg" width="800"/>
+
+<img src="./images/inco1.jpg" width="800"/>
+
+<img src="./images/inco2.jpg" width="800"/>
+
+</div>
+
 ```
 
 ---
