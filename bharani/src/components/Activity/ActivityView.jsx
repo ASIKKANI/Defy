@@ -39,7 +39,7 @@ const ActivityView = () => {
                         <span className="text-xs font-black uppercase tracking-[0.5em]">Interaction History</span>
                     </div>
                     <h1 className="text-6xl font-black uppercase tracking-tighter text-white leading-none">
-                        Agent <span className="gradient-text">Activity</span>
+                        Model <span className="gradient-text">Activity</span>
                     </h1>
                 </div>
                 <div className="flex gap-4">
@@ -62,7 +62,7 @@ const ActivityView = () => {
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={18} />
                     <input
                         type="text"
-                        placeholder="Search by hash, agent or action..."
+                        placeholder="Search by hash, model or action..."
                         className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-6 text-sm text-white focus:border-primary/50 outline-none transition-all"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
@@ -77,7 +77,7 @@ const ActivityView = () => {
                 <table className="w-full text-left border-collapse">
                     <thead>
                         <tr className="border-b border-white/5 bg-white/[0.02]">
-                            <th className="p-6 text-[10px] font-black uppercase text-white/30 tracking-widest">Agent Module</th>
+                            <th className="p-6 text-[10px] font-black uppercase text-white/30 tracking-widest">Model Module</th>
                             <th className="p-6 text-[10px] font-black uppercase text-white/30 tracking-widest">Executed Action</th>
                             <th className="p-6 text-[10px] font-black uppercase text-white/30 tracking-widest">Quantum/Amount</th>
                             <th className="p-6 text-[10px] font-black uppercase text-white/30 tracking-widest">Timestamp</th>

@@ -10,14 +10,14 @@ import {
     ChevronRight,
     Search,
     CheckCircle2,
-    X
+
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const MOCK_AGENTS = [
     {
         id: 'sentinel',
-        name: 'Yield Sentinel',
+        name: 'AgentChain Model',
         purpose: 'Autonomous LP balancing and reward harvesting across Shardeum pools.',
         status: 'Active',
         stake: '5,000 SHM',
@@ -40,8 +40,8 @@ const MOCK_AGENTS = [
         color: '#a78bfa'
     },
     {
-        id: 'guardian',
-        name: 'Shard Guardian',
+        id: 'Opensource',
+        name: 'OPENSOURCE',
         purpose: 'Risk management engine that protects portfolios from sudden volatility.',
         status: 'Active',
         stake: '1,200 SHM',
@@ -88,7 +88,7 @@ const PremiumModal = ({ isOpen, onClose, agent }) => {
                     <div className="w-16 h-16 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center mb-4 shadow-[0_0_30px_rgba(139,92,246,0.2)]">
                         <Lock size={32} />
                     </div>
-                    <h2 className="text-3xl font-black uppercase tracking-tighter text-white mb-2">Unlock Premium Agent</h2>
+                    <h2 className="text-3xl font-black uppercase tracking-tighter text-white mb-2">Unlock Premium Model</h2>
                     <p className="text-sm text-white/50 leading-relaxed">
                         Gain access to the <span className="text-purple-400 font-bold">{agent?.name}</span>'s advanced FHE-shielded algorithms and high-throughput execution engines.
                     </p>
@@ -198,7 +198,7 @@ const AgentDashboard = ({ onSelectAgent }) => {
         <div className="p-12 max-w-7xl mx-auto h-full overflow-y-auto">
             <header className="mb-16">
                 <h1 className="text-6xl font-black uppercase tracking-tighter text-white mb-4 leading-none">
-                    Verified AI <span className="gradient-text">Agents</span>
+                    Verified AI <span className="gradient-text">Models</span>
                 </h1>
                 <p className="text-xl text-white/40 max-w-2xl font-medium">
                     Deploy autonomous intelligence modules secured by Fully Homomorphic Encryption.

@@ -61,7 +61,7 @@ const App = () => {
             case 'interaction':
                 return (
                     <InteractionPane
-                        agent={selectedAgent || { name: 'Generic Agent', purpose: 'Standard Logic', icon: () => null }}
+                        agent={selectedAgent || { name: 'Generic Model', purpose: 'Standard Logic', icon: () => null }}
                         onBack={() => setActiveView('dashboard')}
                         useAgent={useAgent}
                         provider={provider}

@@ -106,7 +106,7 @@ const InteractionPane = ({ agent, onBack, useAgent, provider, signer }) => {
                             className="w-full max-w-3xl space-y-12 py-20"
                         >
                             <div className="space-y-4 text-center">
-                                <h3 className="text-4xl font-black uppercase tracking-tighter text-white">Issue Agent <span className="gradient-text">Command</span></h3>
+                                <h3 className="text-4xl font-black uppercase tracking-tighter text-white">Issue Model <span className="gradient-text">Command</span></h3>
                                 <p className="text-lg text-white/40 font-medium">Define your intent in natural language. Our FHE layer handles the encryption.</p>
                             </div>
 
@@ -193,7 +193,7 @@ const InteractionPane = ({ agent, onBack, useAgent, provider, signer }) => {
                                     className="py-5 rounded-2xl bg-primary text-black text-[11px] font-black tracking-[0.3em] uppercase hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 shadow-glow"
                                 >
                                     {isThinking ? <Loader2 size={18} className="animate-spin" /> : <Zap size={18} className="fill-current" />}
-                                    Run Agent
+                                    Run Model
                                 </button>
                             </div>
                         </motion.div>
@@ -358,7 +358,8 @@ const InteractionPane = ({ agent, onBack, useAgent, provider, signer }) => {
                                     onClick={() => { setStep('input'); setPrompt(''); }}
                                     className="py-4 rounded-xl bg-primary text-black text-[10px] font-black uppercase tracking-widest hover:brightness-110 transition-all flex items-center justify-center gap-2"
                                 >
-                                    <Zap size={14} className="fill-current" /> New Command
+                                    <Zap size={18} className="fill-current" />
+                                    Run Model
                                 </button>
                             </div>
                         </motion.div>
