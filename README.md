@@ -29,9 +29,7 @@
 
 ## 🖼️ Application Preview
 
-> **Placeholder:** Screenshots of the AgentChain interface.
 
-```
 <div align="center">
 
 <img src="./images/dashboard.jpg" width="800"/>
@@ -46,7 +44,6 @@
 
 </div>
 
-```
 
 ---
 
