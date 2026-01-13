@@ -276,6 +276,19 @@ const ActivityView = () => {
         log.action.toLowerCase().includes(search.toLowerCase())
     );
 
+    const handleExportJSON = () => {
+        const dataStr = JSON.stringify(logs, null, 2);
+        const blob = new Blob([dataStr], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `defy_protocol_logs_${Date.now()}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
+
     return (
         <div className="p-12 max-w-7xl mx-auto h-full overflow-y-auto">
             <header className="mb-16 flex justify-between items-end">
@@ -296,7 +309,10 @@ const ActivityView = () => {
                         <Trash2 size={16} className="group-hover:scale-110 transition-transform" />
                         Clear Ledger
                     </button>
-                    <button className="py-4 px-6 rounded-xl border border-white/5 bg-white/5 text-[10px] font-black uppercase tracking-widest text-white/60 hover:text-primary hover:border-primary/40 hover:bg-primary/5 transition-all flex items-center gap-2 group">
+                    <button
+                        onClick={handleExportJSON}
+                        className="py-4 px-6 rounded-xl border border-white/5 bg-white/5 text-[10px] font-black uppercase tracking-widest text-white/60 hover:text-primary hover:border-primary/40 hover:bg-primary/5 transition-all flex items-center gap-2 group"
+                    >
                         <Download size={16} className="group-hover:translate-y-0.5 transition-transform" />
                         Export Protocol JSON
                     </button>

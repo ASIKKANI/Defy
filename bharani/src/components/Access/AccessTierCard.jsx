@@ -4,7 +4,7 @@ import { useAccess, ACCESS_LEVELS } from '../../context/AccessContext';
 import { ShieldCheck, Activity, Lock, XCircle, CheckCircle2, ChevronRight } from 'lucide-react';
 
 const AccessTierCard = () => {
-    const { tier, upgradeToPro } = useAccess();
+    const { tier, upgradeToPro, downgradeToFree } = useAccess();
     const isPro = tier === ACCESS_LEVELS.PRO;
 
     const freeFeatures = [
@@ -45,18 +45,21 @@ const AccessTierCard = () => {
                             TIER: <span className={isPro ? 'text-purple-400' : 'text-primary'}>{tier} USER</span>
                         </h2>
                     </div>
-                    {isPro ? (
-                        <div className="px-4 py-2 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 text-[10px] font-black uppercase tracking-widest italic">
-                            INSTITUTIONAL_GRADE
-                        </div>
-                    ) : (
-                        <button
-                            onClick={upgradeToPro}
-                            className="px-6 py-3 rounded-xl bg-primary text-black text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-glow"
-                        >
-                            Request Upgrade
-                        </button>
-                    )}
+                    <button
+                        onClick={isPro ? downgradeToFree : upgradeToPro}
+                        className={`relative px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-glow flex items-center gap-3 ${isPro
+                            ? 'bg-purple-500/10 border border-purple-500/20 text-purple-400 hover:bg-purple-500/20'
+                            : 'bg-primary text-black hover:scale-105'
+                            }`}
+                    >
+                        {isPro && (
+                            <span className="relative flex h-2 w-2">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-purple-500"></span>
+                            </span>
+                        )}
+                        {isPro ? "Institutional Active" : "Request Upgrade"}
+                    </button>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-12 border-y border-white/5 py-12">
