@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Activity,
     Search,
@@ -12,17 +12,23 @@ import {
     ExternalLink,
     Cpu
 } from 'lucide-react';
-
-const MOCK_ACTIVITY = [
-    { id: 1, agent: 'Yield Sentinel', action: 'LP Deposit', amount: '1,200 SHM', time: '10:42 AM', status: 'Success', type: 'PUBLIC' },
-    { id: 2, agent: 'Stealth Arbitrator', action: 'Privacy Swap', amount: '4,500 SHM', time: '09:15 AM', status: 'Success', type: 'CONFIDENTIAL' },
-    { id: 3, agent: 'Shard Guardian', action: 'Risk Adjustment', amount: 'N/A', time: 'Yesterday', status: 'Success', type: 'PUBLIC' },
-    { id: 4, agent: 'Neural Quant', action: 'Strategy Log', amount: '22,000 SHM', time: 'Yesterday', status: 'Reverted', type: 'CONFIDENTIAL' },
-    { id: 5, agent: 'Yield Sentinel', action: 'Reward Claim', amount: '45.2 SHM', time: 'Jan 10', status: 'Success', type: 'PUBLIC' },
-];
+import { getLogs, subscribeLogs, clearLogs } from '../../services/log-service';
+import { Trash2 } from 'lucide-react';
 
 const ActivityView = () => {
     const [search, setSearch] = useState('');
+    const [logs, setLogs] = useState(getLogs());
+
+    useEffect(() => {
+        return subscribeLogs((newLogs) => {
+            setLogs([...newLogs]);
+        });
+    }, []);
+
+    const filteredLogs = logs.filter(log =>
+        log.agent.toLowerCase().includes(search.toLowerCase()) ||
+        log.action.toLowerCase().includes(search.toLowerCase())
+    );
 
     return (
         <div className="p-12 max-w-7xl mx-auto h-full overflow-y-auto">
@@ -36,10 +42,19 @@ const ActivityView = () => {
                         Agent <span className="gradient-text">Activity</span>
                     </h1>
                 </div>
-                <button className="py-4 px-6 rounded-xl border border-white/5 bg-white/5 text-[10px] font-black uppercase tracking-widest text-white/60 hover:text-primary hover:border-primary/40 hover:bg-primary/5 transition-all flex items-center gap-2 group">
-                    <Download size={16} className="group-hover:translate-y-0.5 transition-transform" />
-                    Export Protocol JSON
-                </button>
+                <div className="flex gap-4">
+                    <button
+                        onClick={() => { if (confirm('Erase all session data?')) clearLogs(); }}
+                        className="py-4 px-6 rounded-xl border border-red-500/10 bg-red-500/5 text-[10px] font-black uppercase tracking-widest text-red-500/60 hover:text-red-500 hover:border-red-500/40 hover:bg-red-500/10 transition-all flex items-center gap-2 group"
+                    >
+                        <Trash2 size={16} className="group-hover:scale-110 transition-transform" />
+                        Clear Ledger
+                    </button>
+                    <button className="py-4 px-6 rounded-xl border border-white/5 bg-white/5 text-[10px] font-black uppercase tracking-widest text-white/60 hover:text-primary hover:border-primary/40 hover:bg-primary/5 transition-all flex items-center gap-2 group">
+                        <Download size={16} className="group-hover:translate-y-0.5 transition-transform" />
+                        Export Protocol JSON
+                    </button>
+                </div>
             </header>
 
             <div className="flex gap-4 mb-8">
@@ -71,7 +86,7 @@ const ActivityView = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {MOCK_ACTIVITY.map((log) => (
+                        {filteredLogs.map((log) => (
                             <tr key={log.id} className="border-b border-white/5 hover:bg-white/[0.03] transition-colors group">
                                 <td className="p-6">
                                     <div className="flex items-center gap-3">
@@ -87,7 +102,9 @@ const ActivityView = () => {
                                 <td className="p-6 font-mono text-xs text-primary">{log.amount}</td>
                                 <td className="p-6 text-xs text-white/40">{log.time}</td>
                                 <td className="p-6">
-                                    <span className={`px-2 py-1 rounded text-[9px] font-black uppercase tracking-tighter ${log.status === 'Success' ? 'bg-green-500/10 text-green-500 border border-green-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20'
+                                    <span className={`px-2 py-1 rounded text-[9px] font-black uppercase tracking-tighter ${log.status === 'Success' ? 'bg-green-500/10 text-green-500 border border-green-500/20' :
+                                        log.status === 'Processing' ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20 animate-pulse' :
+                                            'bg-red-500/10 text-red-500 border border-red-500/20'
                                         }`}>
                                         {log.status}
                                     </span>
@@ -104,6 +121,13 @@ const ActivityView = () => {
                                 </td>
                             </tr>
                         ))}
+                        {filteredLogs.length === 0 && (
+                            <tr>
+                                <td colSpan="6" className="p-20 text-center text-white/20 text-xs font-bold uppercase tracking-widest italic">
+                                    No activity detected on local ledger...
+                                </td>
+                            </tr>
+                        )}
                     </tbody>
                 </table>
             </div>

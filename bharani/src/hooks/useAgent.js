@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { generateResponse } from '../services/ollama';
 import { MCP_TOOLS } from '../services/mcp-tools';
 import { ethers } from 'ethers';
+import { addLog, updateLog } from '../services/log-service';
 
 const SYSTEM_PROMPT = `
 You are AgentChain, an advanced AI trading assistant. 
@@ -81,10 +82,23 @@ Context:
         }
     }, [provider, signer]);
 
-    const executeTool = async (toolId, params, provider, signer, isSimulation = false) => {
+    const executeTool = async (toolId, params, provider, signer, isSimulation = false, agentName = 'System') => {
         console.log(`Executing tool: ${toolId} [Simulation Mode: ${isSimulation}]`, params);
 
+        const logEntry = {
+            agent: agentName,
+            action: toolId.replace(/_/g, ' ').toUpperCase(),
+            amount: params?.amount || params?.value || 'N/A',
+            type: toolId.includes('confidential') ? 'CONFIDENTIAL' : 'PUBLIC',
+            status: 'Processing'
+        };
+
+        let logId;
         try {
+            // Add initial log
+            logId = addLog(logEntry);
+            let result;
+
             // SIMULATION INTERCEPTOR
             if (isSimulation) {
                 if (toolId === 'send_transaction') {
@@ -94,22 +108,25 @@ Context:
                     const costWei = estimatedGas * gasPrice;
                     const costEth = ethers.formatEther(costWei);
 
-                    return `[SIMULATION MODE]: Transaction Validated.\n` +
+                    result = `[SIMULATION MODE]: Transaction Validated.\n` +
                         `• Recipient: ${params.to}\n` +
                         `• Amount: ${params.amount} SHM\n` +
                         `• Estimated Gas: ${estimatedGas.toString()} units\n` +
                         `• Est. Fee: ~${costEth} SHM\n` +
                         `• Risk Assessment: Low (Standard Transfer)\n` +
                         `Status: Ready to Execute (Switch to LIVE to confirm).`;
-                }
-
-                if (toolId === 'confidential_execute') {
-                    return `[SIMULATION MODE]: Private Execution Validated.\n` +
+                } else if (toolId === 'confidential_execute') {
+                    result = `[SIMULATION MODE]: Private Execution Validated.\n` +
                         `• Target: ${params.to}\n` +
                         `• Hidden Amount: ${params.value} SHM\n` +
                         `• Encryption: Inco FHE (Simulated)\n` +
                         `• Privacy Overhead: ~15% higher gas\n` +
                         `Status: Ready to Execute (Switch to LIVE to confirm).`;
+                }
+
+                if (result) {
+                    updateLog(logId, { status: 'Success' });
+                    return result;
                 }
             }
 
@@ -123,7 +140,8 @@ Context:
 
                     const bal = await provider.getBalance(targetAddress);
                     const balFmt = ethers.formatEther(bal);
-                    return `${balFmt} SHM`;
+                    result = `${balFmt} SHM`;
+                    break;
 
                 case 'get_token_price':
 
@@ -141,11 +159,12 @@ Context:
                     const buy = (await buyRes.json()).data.amount;
                     const sell = (await sellRes.json()).data.amount;
 
-                    return `Market Data for ${s}:
+                    result = `Market Data for ${s}:
 • Spot Price: $${spot}
 • Buy Price:  $${buy} (with spread)
 • Sell Price: $${sell}
 Source: Coinbase API (Live)`;
+                    break;
 
                 case 'check_liquidity':
                     const poolQuery = (params?.pool || params?.symbol || 'ETH').toUpperCase();
@@ -171,11 +190,12 @@ Try searching for:
                     }
 
                     const topPair = dexData.pairs[0];
-                    return `Top Pool (${topPair.dexId}): ${topPair.baseToken.symbol}/${topPair.quoteToken.symbol}
+                    result = `Top Pool (${topPair.dexId}): ${topPair.baseToken.symbol}/${topPair.quoteToken.symbol}
 • Liquidity: $${topPair.liquidity.usd.toLocaleString()}
 • Price: $${topPair.priceUsd}
 • 24h Vol: $${topPair.volume.h24.toLocaleString()}
 • URL: ${topPair.url}`;
+                    break;
 
                 case 'send_transaction':
                     if (!signer) throw new Error("Wallet not connected");
@@ -190,37 +210,60 @@ Try searching for:
                         value: ethers.parseEther(params.amount.toString())
                         // Removed 'data' because external accounts in Shardeum cannot include data in standard transfers
                     });
-                    return `Public Transaction Sent!\n• Hash: ${tx.hash}\n• Intent: ${publicReasoning}`;
+                    result = `Public Transaction Sent!\n• Hash: ${tx.hash}\n• Intent: ${publicReasoning}`;
+                    break;
 
                 case 'get_wallet_address':
-                    return signer ? await signer.getAddress() : "Wallet not connected";
+                    result = signer ? await signer.getAddress() : "Wallet not connected";
+                    break;
                 case 'get_network':
-                    if (!provider) return "Provider not ready";
-                    const net = await provider.getNetwork();
-                    return `${net.name} (Chain ID: ${net.chainId})`;
+                    if (!provider) {
+                        result = "Provider not ready";
+                    } else {
+                        const net = await provider.getNetwork();
+                        result = `${net.name} (Chain ID: ${net.chainId})`;
+                    }
+                    break;
                 case 'estimate_gas':
-                    if (!provider) return "Provider not ready";
-                    const feeData = await provider.getFeeData();
-                    const gasPrice = feeData.gasPrice ? ethers.formatUnits(feeData.gasPrice, 'gwei') : "Unknown";
-                    return `Current Gas Price: ${gasPrice} Gwei`;
+                    if (!provider) {
+                        result = "Provider not ready";
+                    } else {
+                        const feeData = await provider.getFeeData();
+                        const gasPrice = feeData.gasPrice ? ethers.formatUnits(feeData.gasPrice, 'gwei') : "Unknown";
+                        result = `Current Gas Price: ${gasPrice} Gwei`;
+                    }
+                    break;
                 case 'get_transaction_status':
-                    if (!provider || !params?.hash) return "Please provide a transaction hash.";
-                    const receipt = await provider.getTransactionReceipt(params.hash);
-                    if (!receipt) return "Transaction Pending or Not Found";
-                    return `Status: ${receipt.status === 1 ? 'Success ✅' : 'Failed ❌'} (Block: ${receipt.blockNumber})`;
+                    if (!provider || !params?.hash) {
+                        result = "Please provide a transaction hash.";
+                    } else {
+                        const receipt = await provider.getTransactionReceipt(params.hash);
+                        if (!receipt) {
+                            result = "Transaction Pending or Not Found";
+                        } else {
+                            result = `Status: ${receipt.status === 1 ? 'Success ✅' : 'Failed ❌'} (Block: ${receipt.blockNumber})`;
+                        }
+                    }
+                    break;
 
                 case 'generate_token_contract':
-                    return "Drafted ERC-20 Token Contract [Mock]";
+                    result = "Drafted ERC-20 Token Contract [Mock]";
+                    break;
                 case 'estimate_deploy_cost':
-                    return "Estimated Deployment Cost: 0.05 SHM";
+                    result = "Estimated Deployment Cost: 0.05 SHM";
+                    break;
                 case 'deploy_contract':
-                    return "Contract Deployed at: 0x742d35Cc6634C0532925a3b844Bc454e4438f44e";
+                    result = "Contract Deployed at: 0x742d35Cc6634C0532925a3b844Bc454e4438f44e";
+                    break;
                 case 'analyze_prompt':
-                    return "Intent Analyzed: User wishes to perform financial action.";
+                    result = "Intent Analyzed: User wishes to perform financial action.";
+                    break;
                 case 'validate_constraints':
-                    return "Validation Passed: Balance sufficient, Slippage < 1%.";
+                    result = "Validation Passed: Balance sufficient, Slippage < 1%.";
+                    break;
                 case 'generate_explanation':
-                    return "Explanation: Market conditions are favorable.";
+                    result = "Explanation: Market conditions are favorable.";
+                    break;
                 case 'encrypt_input':
                     try {
                         const { encryptParameter } = await import('../services/inco-service');
@@ -231,7 +274,7 @@ Try searching for:
                         const result = await encryptParameter(valueToEncrypt, params?.type || 'uint32', userAddress);
 
                         if (result.success) {
-                            return `✅ Data secured with Inco Lightning!\n\n` +
+                            result = `✅ Data secured with Inco Lightning!\n\n` +
                                 `• Input: ${valueToEncrypt}\n` +
                                 `• Status: ${result.display}\n` +
                                 `• Ciphertext: ${result.ciphertext?.toString()?.slice(0, 32) || 'N/A'}... [TRUNCATED]`;
@@ -239,8 +282,9 @@ Try searching for:
                             throw new Error(result.error);
                         }
                     } catch (e) {
-                        return `❌ Inco Encryption Failed: ${e.message}`;
+                        result = `❌ Inco Encryption Failed: ${e.message}`;
                     }
+                    break;
                 case 'confidential_execute':
                     try {
                         const { encryptParameter } = await import('../services/inco-service');
@@ -275,7 +319,7 @@ Try searching for:
                                 { value: amountInWei } // This actually moves the 1000 SHM
                             );
 
-                            return `🛡️ **Stealth Transaction Executed**\n\n` +
+                            result = `🛡️ **Stealth Transaction Executed**\n\n` +
                                 `• **Funds Moved:** ${amountToEncrypt} SHM\n` +
                                 `• **Privacy Level:** High (Intent Scrambled)\n` +
                                 `• **Blockchain Proof:** [Tx ${tx.hash.slice(0, 10)}...](https://explorer-sphinx.shardeum.org/tx/${tx.hash})\n\n` +
@@ -285,21 +329,31 @@ Try searching for:
                             throw new Error(amountResult.error || thoughtResult.error);
                         }
                     } catch (e) {
-                        return `❌ Confidential Execution Failed: ${e.message}`;
+                        result = `❌ Confidential Execution Failed: ${e.message}`;
                     }
+                    break;
                 case 'selective_disclosure':
-                    return "Result Revealed: 100 Tokens. Inputs remain hidden.";
+                    result = "Result Revealed: 100 Tokens. Inputs remain hidden.";
+                    break;
                 case 'submit_agent_profile':
-                    return "Agent Profile Submitted to DAO for review.";
+                    result = "Agent Profile Submitted to DAO for review.";
+                    break;
                 case 'list_approved_agents':
-                    return "Active Agents: [TradeMaster AI, YieldOptimizer, ShardGuardian]";
+                    result = "Active Agents: [TradeMaster AI, YieldOptimizer, ShardGuardian]";
+                    break;
 
                 default:
                     console.log("Tool execution not fully implemented for:", toolId);
-                    return "Tool not implemented yet.";
+                    result = "Tool not implemented yet.";
+                    break;
             }
+
+            updateLog(logId, { status: 'Success' });
+            return result;
+
         } catch (error) {
             console.error("Tool execution failed:", error);
+            if (logId) updateLog(logId, { status: 'Reverted' });
             throw error;
         }
     };

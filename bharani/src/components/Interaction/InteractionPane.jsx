@@ -45,7 +45,7 @@ const InteractionPane = ({ agent, onBack, useAgent, provider, signer }) => {
     const handleExecute = async () => {
         try {
             setStep('executing');
-            const result = await executeTool(currentDecision.tool, currentDecision.params, provider, signer, simulationMode);
+            const result = await executeTool(currentDecision.tool, currentDecision.params, provider, signer, simulationMode, agent.name);
             setMessages(prev => [...prev, { role: 'assistant', text: result }]);
             setStep('success');
         } catch (err) {
