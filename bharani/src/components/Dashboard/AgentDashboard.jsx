@@ -10,9 +10,11 @@ import {
     ChevronRight,
     Search,
     CheckCircle2,
-
+    X,
+    ExternalLink
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { usePayment } from '../../context/PaymentContext';
 
 const MOCK_AGENTS = [
     {
@@ -29,7 +31,7 @@ const MOCK_AGENTS = [
     },
     {
         id: 'arbitrator',
-        name: 'Stealth Arbitrator',
+        name: 'AgentChain Arbitrator',
         purpose: 'Deep-liquidity arbitrage using FHE for complete strategy obfuscation.',
         status: 'Premium',
         stake: '25,000 SHM',
@@ -66,7 +68,17 @@ const MOCK_AGENTS = [
 ];
 
 const PremiumModal = ({ isOpen, onClose, agent }) => {
+    const { openPayment } = usePayment();
+
     if (!isOpen) return null;
+
+    const handleUnlock = () => {
+        onClose();
+        openPayment({
+            planName: `${agent?.name} Premium`,
+            amount: "249.99"
+        });
+    };
 
     return (
         <motion.div
@@ -120,7 +132,12 @@ const PremiumModal = ({ isOpen, onClose, agent }) => {
 
                 <div className="grid grid-cols-2 gap-4">
                     <button onClick={onClose} className="py-4 rounded-xl border border-white/10 text-white/40 text-xs font-black uppercase tracking-widest hover:bg-white/5 transition-all">Cancel</button>
-                    <button className="py-4 rounded-xl bg-purple-500 text-black text-xs font-black uppercase tracking-widest hover:bg-purple-400 transition-all shadow-[0_0_20px_rgba(139,92,246,0.4)]">Pay & Unlock</button>
+                    <button
+                        onClick={handleUnlock}
+                        className="py-4 rounded-xl bg-purple-500 text-black text-xs font-black uppercase tracking-widest hover:bg-purple-400 transition-all shadow-[0_0_20px_rgba(139,92,246,0.4)]"
+                    >
+                        Pay & Unlock
+                    </button>
                 </div>
             </motion.div>
         </motion.div>

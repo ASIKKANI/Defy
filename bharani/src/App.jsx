@@ -9,8 +9,18 @@ import GovernanceView from './components/Governance/GovernanceView';
 import ActivityView from './components/Activity/ActivityView';
 import SettingsView from './components/Settings/SettingsView';
 import { AnimatePresence, motion } from 'framer-motion';
+import Plasma from './components/Effects/Plasma';
+import { PaymentProvider } from './context/PaymentContext';
 
 const App = () => {
+    return (
+        <PaymentProvider>
+            <AppContent />
+        </PaymentProvider>
+    );
+};
+
+const AppContent = () => {
     const [provider, setProvider] = useState(null);
     const [signer, setSigner] = useState(null);
     const [address, setAddress] = useState('');
@@ -112,6 +122,16 @@ const App = () => {
             </aside>
 
             {/* Global Aesthetics */}
+            <div className="fixed inset-0 pointer-events-none z-0 opacity-40">
+                <Plasma
+                    color="#00FF41"
+                    speed={0.3}
+                    direction="forward"
+                    scale={1}
+                    opacity={0.4}
+                    mouseInteractive={true}
+                />
+            </div>
             <div className="fixed inset-0 pointer-events-none z-50">
                 <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-primary/5 opacity-50" />
             </div>

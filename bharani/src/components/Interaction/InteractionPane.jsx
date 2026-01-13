@@ -37,15 +37,13 @@ const InteractionPane = ({ agent, onBack, useAgent, provider, signer }) => {
         }
     }, [transcript]);
 
-    const handleRun = async () => {
+    const handleRun = async (forceConsensus = false) => {
         if (!prompt.trim() || isThinking) return;
 
-        // In a real app, we'd decide whether to go to consensus or plan
-        // For this prototype, if "consensus" is in the prompt, go to consensus, else plan
         const response = await processPrompt(prompt);
         setCurrentDecision(response);
 
-        if (prompt.toLowerCase().includes('consensus') || prompt.toLowerCase().includes('strategy')) {
+        if (forceConsensus === true || prompt.toLowerCase().includes('consensus') || prompt.toLowerCase().includes('strategy')) {
             setStep('consensus');
             speak("I've generated a multi-model consensus for this strategy. Please select a path.");
         } else {
@@ -183,7 +181,10 @@ const InteractionPane = ({ agent, onBack, useAgent, provider, signer }) => {
                             </div>
 
                             <div className="grid grid-cols-2 gap-6">
-                                <button className="py-5 rounded-2xl bg-white/5 border border-white/10 text-[11px] font-black tracking-[0.3em] uppercase text-white/40 hover:text-white transition-all flex items-center justify-center gap-3 group">
+                                <button
+                                    onClick={() => handleRun(true)}
+                                    className="py-5 rounded-2xl bg-white/5 border border-white/10 text-[11px] font-black tracking-[0.3em] uppercase text-white/40 hover:text-white transition-all flex items-center justify-center gap-3 group"
+                                >
                                     <BrainCircuit size={18} className="group-hover:rotate-12 transition-transform" />
                                     Consensus
                                 </button>
@@ -205,33 +206,77 @@ const InteractionPane = ({ agent, onBack, useAgent, provider, signer }) => {
                             initial={{ opacity: 0, x: 50 }}
                             animate={{ opacity: 1, x: 0 }}
                             exit={{ opacity: 0, x: -50 }}
-                            className="w-full max-w-4xl py-20"
+                            className="w-full max-w-5xl py-20 px-6"
                         >
                             <div className="text-center mb-16">
-                                <h3 className="text-4xl font-black uppercase tracking-tighter text-white mb-4">AI Roundtable <span className="gradient-text">Consensus</span></h3>
-                                <p className="text-white/40 font-medium">Our multi-model orchestration layer has generated 3 distinct paths.</p>
+                                <h3 className="text-4xl font-black uppercase tracking-tighter text-white mb-4">Model Roundtable <span className="gradient-text">Consensus</span></h3>
+                                <p className="text-white/40 font-medium">Three distinct AgentChain models have analyzed your intent. Select a strategy.</p>
                             </div>
 
                             <div className="grid grid-cols-3 gap-8">
                                 {[
-                                    { title: 'Safety First', risk: 'Ultra-Low', score: 99, color: 'emerald' },
-                                    { title: 'Balanced Logic', risk: 'Medium', score: 85, color: 'primary' },
-                                    { title: 'Alpha Max', risk: 'High', score: 65, color: 'purple' }
-                                ].map((s, i) => (
-                                    <button key={i} onClick={() => setStep('plan')} className="p-8 rounded-[40px] border border-white/10 bg-white/5 hover:border-primary/40 hover:bg-primary/5 transition-all text-left flex flex-col group relative overflow-hidden">
-                                        <div className="absolute top-8 right-8 p-3 rounded-2xl bg-white/5 border border-white/5 group-hover:border-primary/20 group-hover:text-primary transition-all">
-                                            <ShieldCheck size={24} />
-                                        </div>
-                                        <h4 className="text-xl font-black text-white mb-2 uppercase italic">{s.title}</h4>
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-white/30 mb-8">System Confidence: {s.score}%</span>
-
-                                        <div className="mt-auto space-y-4">
-                                            <div className="flex flex-col">
-                                                <span className="text-[9px] text-white/20 font-bold uppercase mb-1">Risk Profile</span>
-                                                <span className="text-primary text-[10px] font-black uppercase">{s.risk}</span>
+                                    {
+                                        name: 'Yield Sentinel',
+                                        risk: 'Low',
+                                        confidence: 99,
+                                        recommendation: 'Auto-compound rewards in liquidity pools while maintaining 100% collateral safety.',
+                                        color: 'var(--primary)',
+                                        icon: ShieldCheck
+                                    },
+                                    {
+                                        name: 'Stealth Arbitrator',
+                                        risk: 'Medium',
+                                        confidence: 88,
+                                        recommendation: 'Execute FHE-shielded arbitrage across high-depth pools on Shardeum to capture yield.',
+                                        color: '#a78bfa',
+                                        icon: Zap
+                                    },
+                                    {
+                                        name: 'Neural Quant',
+                                        risk: 'High',
+                                        confidence: 72,
+                                        recommendation: 'Predictive swap based on on-chain momentum signals and current sentiment analysis.',
+                                        color: '#ec4899',
+                                        icon: Activity
+                                    }
+                                ].map((mod, i) => (
+                                    <button
+                                        key={i}
+                                        onClick={() => setStep('plan')}
+                                        className="p-8 rounded-[40px] border border-white/10 bg-white/5 hover:border-primary/40 hover:bg-primary/5 transition-all text-left flex flex-col group relative overflow-hidden h-full"
+                                    >
+                                        <div className="flex items-center gap-3 mb-8">
+                                            <div className="p-3 rounded-2xl border transition-all"
+                                                style={{ borderColor: mod.color + '33', background: mod.color + '11', color: mod.color }}>
+                                                <mod.icon size={24} />
                                             </div>
-                                            <div className="flex items-center gap-2 text-xs font-bold text-white group-hover:text-primary transition-all">
-                                                Select Plan <ArrowRight size={14} />
+                                            <div>
+                                                <h4 className="text-lg font-black text-white uppercase italic leading-none mb-1">{mod.name}</h4>
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded ${mod.risk === 'Low' ? 'bg-primary/20 text-primary' : mod.risk === 'Medium' ? 'bg-yellow-500/20 text-yellow-500' : 'bg-red-500/20 text-red-500'}`}>
+                                                        {mod.risk} RISK
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-4 mb-8">
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-white/30 block">Recommendation</span>
+                                            <p className="text-xs text-white/60 leading-relaxed font-medium italic">
+                                                "{mod.recommendation}"
+                                            </p>
+                                        </div>
+
+                                        <div className="mt-auto space-y-4 pt-6 border-t border-white/5">
+                                            <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest">
+                                                <span className="text-white/30 truncate">Model Confidence</span>
+                                                <span className="text-primary">{mod.confidence}%</span>
+                                            </div>
+                                            <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+                                                <div className="h-full bg-primary" style={{ width: `${mod.confidence}%` }} />
+                                            </div>
+                                            <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-white group-hover:text-primary transition-all">
+                                                Select Model <ArrowRight size={14} />
                                             </div>
                                         </div>
                                     </button>
