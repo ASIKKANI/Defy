@@ -3,7 +3,7 @@
 ## Transparent, DAO-Governed AI Agents for Auditable Decision-Making
 
 **Hackathon / Demo Edition**
-
+ 
 <div align="center">
 
 ![AgentChain](https://img.shields.io/badge/AgentChain-Explainable%20AI%20Agents-blueviolet?style=for-the-badge)
