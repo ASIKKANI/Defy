@@ -10,8 +10,8 @@
 ![DAO](https://img.shields.io/badge/Governance-DAO%20Controlled-green?style=for-the-badge)
 ![Explainable AI](https://img.shields.io/badge/AI-Explainable-orange?style=for-the-badge)
 ![Status](https://img.shields.io/badge/Status-Live%20Contract-brightgreen?style=for-the-badge)
-
-**AI agents shouldn’t be black boxes. They should be auditable, governable, and explainable.**
+ 
+**AI agents shouldn’t be black boxes. They should be auditable, governable, and explainable**
 
 </div>
 
