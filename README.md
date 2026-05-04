@@ -7,7 +7,7 @@
 <div align="center">
 
 ![AgentChain](https://img.shields.io/badge/AgentChain-Explainable%20AI%20Agents-blueviolet?style=for-the-badge)
-![DAO](https://img.shields.io/badge/Governance-DAO%20Controlled-green?style=for-the-badge)
+![DAO](https://img.shields.io/badge/Governance-DAO%20Controlled-green?style=for-the-badge) 
 ![Explainable AI](https://img.shields.io/badge/AI-Explainable-orange?style=for-the-badge)
 ![Status](https://img.shields.io/badge/Status-Live%20Contract-brightgreen?style=for-the-badge)
  
